@@ -1,0 +1,24 @@
+[project]
+name = "space-review"
+version = "0.1.0"
+description = "CLI tool to fetch code reviews from JetBrains Space"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.25",
+    "click>=8.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-httpx>=0.21",
+]
+
+[project.scripts]
+space-review = "space_review.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
