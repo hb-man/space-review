@@ -199,3 +199,64 @@ class TestFormatSuggestedEditDiff:
 
         assert "-val x = 1" in result
         assert "+val x = 2" in result
+
+
+class TestFormatMarkdownGeneralComments:
+    def test_format_general_comments_section(self, sample_review):
+        general_comments = [
+            {"id": "gc-1", "author": "Reviewer", "text": "LGTM!", "resolved": None}
+        ]
+
+        result = format_markdown(sample_review, [], general_comments)
+
+        assert "## 💬 General Comments" in result
+        assert "**Reviewer**" in result
+        assert "> LGTM!" in result
+
+    def test_format_general_comments_with_resolved_status(self, sample_review):
+        general_comments = [
+            {"id": "gc-1", "author": "Dev", "text": "Fixed", "resolved": True},
+            {"id": "gc-2", "author": "Dev2", "text": "Pending", "resolved": False},
+        ]
+
+        result = format_markdown(sample_review, [], general_comments)
+
+        assert "1 unresolved, 1 resolved" in result
+        assert "✅" in result
+        assert "💬" in result
+
+    def test_format_general_comments_multiline_text(self, sample_review):
+        general_comments = [
+            {"id": "gc-1", "author": "Reviewer", "text": "Line 1\nLine 2\nLine 3", "resolved": None}
+        ]
+
+        result = format_markdown(sample_review, [], general_comments)
+
+        assert "> Line 1" in result
+        assert "> Line 2" in result
+        assert "> Line 3" in result
+
+    def test_format_general_comments_unknown_resolved_status(self, sample_review):
+        general_comments = [
+            {"id": "gc-1", "author": "Reviewer", "text": "Comment", "resolved": None}
+        ]
+
+        result = format_markdown(sample_review, [], general_comments)
+
+        assert "💭" in result
+
+    def test_format_no_general_comments_section_when_empty(self, sample_review):
+        result = format_markdown(sample_review, [], [])
+
+        assert "General Comments" not in result
+
+    def test_format_json_includes_general_comments(self, sample_review):
+        general_comments = [
+            {"id": "gc-1", "author": "Reviewer", "text": "Comment", "resolved": True}
+        ]
+
+        result = format_json(sample_review, [], general_comments)
+
+        parsed = json.loads(result)
+        assert len(parsed["general_comments"]) == 1
+        assert parsed["general_comments"][0]["author"] == "Reviewer"

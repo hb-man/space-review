@@ -1,6 +1,7 @@
 import pytest
 from space_review.processor import (
     extract_code_discussions,
+    extract_general_comments,
     filter_discussions,
     build_discussion_with_thread,
 )
@@ -284,3 +285,135 @@ class TestBuildDiscussionWithThread:
         assert result["author"] == "Author"
         assert result["text"] == "Initial comment"
         assert result["suggested_edit"] == {"original": "old", "suggested": "new"}
+
+
+class TestExtractGeneralComments:
+    def test_extract_general_comment(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "This is a general comment",
+                "author": {"name": "Reviewer"},
+                "time": "2024-01-15T10:00:00Z",
+                "details": {"className": "M2TextItemContent"},
+            }
+        ]
+
+        result = extract_general_comments(feed_messages)
+
+        assert len(result) == 1
+        assert result[0]["id"] == "msg-1"
+        assert result[0]["author"] == "Reviewer"
+        assert result[0]["text"] == "This is a general comment"
+        assert result[0]["time"] == "2024-01-15T10:00:00Z"
+
+    def test_extract_skips_non_text_content(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "Code discussion",
+                "author": {"name": "Reviewer"},
+                "details": {"className": "CodeDiscussionAddedFeedEvent"},
+            },
+            {
+                "id": "msg-2",
+                "text": "General comment",
+                "author": {"name": "Reviewer"},
+                "details": {"className": "M2TextItemContent"},
+            },
+        ]
+
+        result = extract_general_comments(feed_messages)
+
+        assert len(result) == 1
+        assert result[0]["id"] == "msg-2"
+
+    def test_extract_skips_patronus_bot(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "Bot message",
+                "author": {"name": "Patronus"},
+                "details": {"className": "M2TextItemContent"},
+            },
+            {
+                "id": "msg-2",
+                "text": "Human comment",
+                "author": {"name": "Developer"},
+                "details": {"className": "M2TextItemContent"},
+            },
+        ]
+
+        result = extract_general_comments(feed_messages)
+
+        assert len(result) == 1
+        assert result[0]["author"] == "Developer"
+
+    def test_extract_with_unbound_discussions_resolved(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "A comment",
+                "author": {"name": "Reviewer"},
+                "details": {"className": "M2TextItemContent"},
+            }
+        ]
+        unbound_discussions = [
+            {"id": "unbound-1", "resolved": True, "item": {"id": "msg-1"}}
+        ]
+
+        result = extract_general_comments(feed_messages, unbound_discussions)
+
+        assert len(result) == 1
+        assert result[0]["resolved"] is True
+
+    def test_extract_with_unbound_discussions_unresolved(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "A comment",
+                "author": {"name": "Reviewer"},
+                "details": {"className": "M2TextItemContent"},
+            }
+        ]
+        unbound_discussions = [
+            {"id": "unbound-1", "resolved": False, "item": {"id": "msg-1"}}
+        ]
+
+        result = extract_general_comments(feed_messages, unbound_discussions)
+
+        assert len(result) == 1
+        assert result[0]["resolved"] is False
+
+    def test_extract_without_unbound_discussions(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "A comment",
+                "author": {"name": "Reviewer"},
+                "details": {"className": "M2TextItemContent"},
+            }
+        ]
+
+        result = extract_general_comments(feed_messages)
+
+        assert len(result) == 1
+        assert result[0]["resolved"] is None
+
+    def test_extract_handles_missing_details(self):
+        feed_messages = [
+            {
+                "id": "msg-1",
+                "text": "No details",
+                "author": {"name": "Someone"},
+            }
+        ]
+
+        result = extract_general_comments(feed_messages)
+
+        assert result == []
+
+    def test_extract_empty_feed_messages(self):
+        result = extract_general_comments([])
+
+        assert result == []

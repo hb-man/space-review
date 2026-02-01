@@ -102,3 +102,39 @@ class TestCliUnresolvedFlag:
             )
             call_args = mock_fetch.call_args
             assert call_args[1]["unresolved_only"] is False
+
+
+class TestCliFileOutput:
+    def test_cli_output_to_file(self, runner, tmp_path):
+        output_file = tmp_path / "review.md"
+        with patch("space_review.cli.fetch_review") as mock_fetch:
+            mock_fetch.return_value = ("# Test Review Content", [])
+            result = runner.invoke(
+                main,
+                ["IJ-CR-123", "-o", str(output_file)],
+                env={"SPACE_TOKEN": "test-token"},
+            )
+            assert result.exit_code == 0
+            assert output_file.exists()
+            assert output_file.read_text() == "# Test Review Content"
+            assert "Exported to" in result.output
+
+
+class TestCliErrorHandling:
+    def test_cli_invalid_review_id_error(self, runner):
+        with patch("space_review.cli.fetch_review") as mock_fetch:
+            mock_fetch.side_effect = ValueError("Invalid review identifier: bad-id")
+            result = runner.invoke(
+                main, ["bad-id"], env={"SPACE_TOKEN": "test-token"}
+            )
+            assert result.exit_code != 0
+            assert "Error" in result.output
+
+    def test_cli_api_error(self, runner):
+        with patch("space_review.cli.fetch_review") as mock_fetch:
+            mock_fetch.side_effect = Exception("API connection failed")
+            result = runner.invoke(
+                main, ["IJ-CR-123"], env={"SPACE_TOKEN": "test-token"}
+            )
+            assert result.exit_code != 0
+            assert "Error" in result.output
