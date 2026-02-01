@@ -5,6 +5,17 @@ build/
 dist/
 wheels/
 *.egg-info
+.coverage
 
 # Virtual environments
 .venv
+
+# IDE
+.idea/
+
+# Secrets
+.env
+
+# Generated/temp files
+openapi.json
+review-*.md
