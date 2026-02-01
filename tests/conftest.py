@@ -34,9 +34,9 @@ def sample_feed_message() -> dict[str, Any]:
                 },
                 "snippet": {
                     "lines": [
-                        {"text": "val libraryDependency = libraries[dependency]"},
-                        {"text": "if (libraryDependency != null) {"},
-                        {"text": "  val exported = !libraryDependency.isLowPriority"},
+                        {"text": "val libraryDependency = libraries[dependency]", "type": None, "oldLineNum": 41, "newLineNum": 41},
+                        {"text": "if (libraryDependency != null) {", "type": None, "oldLineNum": 42, "newLineNum": 42},
+                        {"text": "  val exported = !libraryDependency.isLowPriority", "type": "ADDED", "oldLineNum": None, "newLineNum": 43},
                     ]
                 },
                 "channel": {"id": "disc-channel-1"},

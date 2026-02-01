@@ -76,7 +76,8 @@ class TestFormatMarkdownCodeDiscussion:
         result = format_markdown(sample_review, [sample_discussion])
 
         assert "## 📝 Code Discussions" in result
-        assert "### 💬 `/plugins/bazel/ModuleEntityUpdater.kt:43`" in result
+        # Line 43 (0-indexed) displays as 44 (1-indexed)
+        assert "### 💬 `/plugins/bazel/ModuleEntityUpdater.kt:44`" in result
 
     def test_format_markdown_discussion_metadata(self, sample_review, sample_discussion):
         result = format_markdown(sample_review, [sample_discussion])

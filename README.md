@@ -1,25 +1,37 @@
 # Space Code Review CLI
 
-A command-line tool to fetch code reviews from JetBrains Space (jetbrains.team) with full discussion details including code snippets and threaded replies.
+CLI to fetch code reviews from JetBrains Space with discussion threads and code snippets.
 
 ## Installation
 
-### Development (requires uv)
+### Quick Install (macOS/Linux)
 
 ```bash
-cd space-review
-uv sync --all-extras
+./scripts/install.sh           # Install
+./scripts/install.sh update    # Update to latest
+./scripts/install.sh uninstall # Remove
 ```
 
-### Standalone executable (Unix)
+Installs `uv` if needed, copies the tool to `~/.local/share/uv/tools/`, and adds `space-review` to `~/.local/bin`. The repo can be deleted after install.
 
-Build a self-contained executable that only requires Python:
+### Standalone Executable
+
+Build a self-contained executable (~700KB) that only requires Python:
 
 ```bash
 ./scripts/build-executable.sh
 ```
 
-This creates `dist/space-review` (~700KB) which you can copy anywhere in your PATH.
+Creates `dist/space-review` which you can copy anywhere.
+
+### Without Installing
+
+Run directly from the source directory:
+
+```bash
+uv sync
+uv run space-review IJ-CR-174369
+```
 
 ## Configuration
 
@@ -47,12 +59,14 @@ space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
 ### Output Options
 
 ```bash
-# Default: Markdown to stdout
+# Default: Colored terminal output
 space-review IJ-CR-174369
 
+# Plain markdown (no colors, for piping/files)
+space-review IJ-CR-174369 --plain
+
 # Export to markdown file
-space-review IJ-CR-174369 -o review.md
-space-review IJ-CR-174369 --output review.md
+space-review IJ-CR-174369 --plain -o review.md
 
 # JSON output
 space-review IJ-CR-174369 --json
@@ -77,54 +91,24 @@ space-review IJ-CR-174369 --unresolved --json
 
 ## Output Format
 
-The markdown output includes:
+Code snippets show diff-style formatting with line numbers and selection markers:
 
-- **Review header** with title, ID, and status (🔴 Closed / 🟢 Opened)
-- **General comments** (non-code review comments) with quoted text
-- **Code discussions** grouped by file with:
-  - Status icon (✅ resolved / 💬 unresolved)
-  - Code snippet with syntax highlighting
-  - Initial comment
-  - Collapsible thread replies
-
-### Example Output
-
-```markdown
-# BAZEL-2843 [bazel]: make unit tests runnable with Bazel
-
-**Review:** `IJ-CR-189586` | **State:** 🔴 Closed
-
-## 💬 General Comments
-
-**Andrzej.Gluszak:**
-
-> >     Add hermetic_cc_toolchain for rules_kotlin 2.0.0 compatibility
->
-> sounds suspicious...
-
----
-
-## 📝 Code Discussions (0 unresolved, 4 resolved)
-
-### ✅ `/plugins/bazel/src/BazelGlobalFunctions.kt:68`
-
-\`\`\`kotlin
-val globalFunctions: Map<String, BazelGlobalFunction>
-  get() = StarlarkGlobalFunctionProvider.extensionPoint.extensionList
-\`\`\`
-
-**Andrzej.Gluszak**
-
-I think it's not the only place where we have such caching
-
-<details>
-<summary>💬 5 replies</summary>
-
-> **pasynkov:**
-> Any reason to hold it on static?
-...
-</details>
 ```
+Legend: + added | - deleted | > selected
+
+   182  182       }
+>       184 +     // Ensure HOME is set (Bazelisk requires it)
+>       185 +     val userHome = System.getProperty("user.home")
+>       186 +     if (commandLine.environment["HOME"] == null) {
+>       187 +       commandLine.withEnvironment("HOME", userHome)
+>       188 +     }
+   184  192       commandLine.withRedirectErrorStream(false)
+```
+
+- **Two columns**: old line number, new line number
+- **`+`**: Added line (green in color mode)
+- **`-`**: Deleted line (red in color mode)
+- **`>`**: Selected lines being discussed (yellow marker)
 
 ## CLI Reference
 
@@ -137,6 +121,7 @@ Usage: space-review [OPTIONS] REVIEW_ID
 
 Options:
   --json              Output as JSON
+  --plain             Output as plain markdown (no colors)
   --unresolved        Show only unresolved discussions
   --token TEXT        Space API token
   -o, --output PATH   Export to markdown file
@@ -172,17 +157,13 @@ space-review/
 
 ## For AI Agents
 
-See [AGENTS.md](AGENTS.md) for agent-specific instructions including:
-- Which files can be fully read vs require searching
-- Space API reference and lookup workflow
-- Testing and development commands
+See [AGENTS.md](AGENTS.md).
 
 ## Features
 
-- Parses review IDs (`IJ-CR-*`, `IJ-MR-*`) and Space URLs
-- Fetches general comments and code discussions
-- Gets actual comment text from thread channels (not just "posted a comment")
-- Filters out bot comments (Patronus)
-- Supports resolved/unresolved filtering
-- Syntax highlighting for code snippets (Kotlin, Python, Java, Starlark, etc.)
-- Collapsible thread replies in markdown output
+- Accepts review IDs (`IJ-CR-*`, `IJ-MR-*`) or Space URLs
+- Fetches general comments and code discussions with full thread content
+- Diff-style code snippets with line numbers, add/delete markers, and selection highlighting
+- Colored terminal output (default) or plain markdown
+- Filters bot comments (Patronus) and supports `--unresolved` filtering
+- JSON output for programmatic use

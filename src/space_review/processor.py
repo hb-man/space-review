@@ -9,13 +9,25 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
 
         code_discussion = details["codeDiscussion"]
         anchor = code_discussion["anchor"]
+        end_anchor = code_discussion.get("endAnchor")
         snippet_data = code_discussion.get("snippet", {})
-        snippet_lines = [line["text"] for line in snippet_data.get("lines", [])]
+        snippet_lines = [
+            {
+                "text": line["text"],
+                "type": line.get("type"),
+                "old_line": line.get("oldLineNum"),
+                "new_line": line.get("newLineNum"),
+            }
+            for line in snippet_data.get("lines", [])
+        ]
 
         discussions.append({
             "id": code_discussion["id"],
             "filename": anchor["filename"],
             "line": anchor["line"],
+            "old_line": anchor.get("oldLine"),
+            "end_line": end_anchor.get("line") if end_anchor else None,
+            "old_end_line": end_anchor.get("oldLine") if end_anchor else None,
             "resolved": code_discussion["resolved"],
             "snippet": snippet_lines,
             "channel_id": code_discussion["channel"]["id"],
