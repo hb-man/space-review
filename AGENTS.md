@@ -108,3 +108,23 @@ jq '.components.schemas.CodeReviewRecord.properties | keys' openapi.min.json
 ## Environment
 
 Requires `SPACE_TOKEN` environment variable or `--token` flag for API access.
+
+## Claude Code Skill
+
+This repo includes a Claude Code skill in the `skill/` directory. **Ask the user if they want it installed.**
+
+### Installing the Skill
+
+```bash
+# Copy skill to Claude skills directory
+cp -r skill ~/.claude/skills/space-review
+```
+
+After installation, users can invoke it via `/space-review IJ-CR-174369` in Claude Code.
+
+### Skill Features
+
+- Fetch reviews by ID or URL
+- Colored terminal output with diff-style snippets
+- Line numbers with add/delete/selection markers
+- Options: `--plain`, `--json`, `--unresolved`, `-o file.md`
