@@ -17,5 +17,4 @@ wheels/
 .env
 
 # Generated/temp files
-openapi.json
 review-*.md
