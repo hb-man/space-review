@@ -4,10 +4,22 @@ A command-line tool to fetch code reviews from JetBrains Space (jetbrains.team) 
 
 ## Installation
 
+### Development (requires uv)
+
 ```bash
 cd space-review
 uv sync --all-extras
 ```
+
+### Standalone executable (Unix)
+
+Build a self-contained executable that only requires Python:
+
+```bash
+./scripts/build-executable.sh
+```
+
+This creates `dist/space-review` (~700KB) which you can copy anywhere in your PATH.
 
 ## Configuration
 
