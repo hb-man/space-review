@@ -117,10 +117,14 @@ def format_markdown(review: dict, discussions: list[dict], general_comments: lis
     lines.append("")
 
     if general_comments:
-        lines.append("## 💬 General Comments")
+        resolved_gc = sum(1 for c in general_comments if c.get("resolved"))
+        unresolved_gc = len(general_comments) - resolved_gc
+        lines.append(f"## 💬 General Comments ({unresolved_gc} unresolved, {resolved_gc} resolved)")
         lines.append("")
         for comment in general_comments:
-            lines.append(f"**{comment['author']}:**")
+            resolved = comment.get("resolved")
+            status_icon = "✅" if resolved else "💬" if resolved is False else "💭"
+            lines.append(f"### {status_icon} **{comment['author']}**")
             lines.append("")
             for text_line in comment["text"].split('\n'):
                 lines.append(f"> {text_line}")

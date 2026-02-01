@@ -31,7 +31,14 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
 SKIP_AUTHORS = {"Patronus"}
 
 
-def extract_general_comments(feed_messages: list[dict]) -> list[dict]:
+def extract_general_comments(feed_messages: list[dict], unbound_discussions: list[dict] | None = None) -> list[dict]:
+    unbound_map = {}
+    if unbound_discussions:
+        for ud in unbound_discussions:
+            item_id = ud.get("item", {}).get("id")
+            if item_id:
+                unbound_map[item_id] = ud
+
     comments = []
     for message in feed_messages:
         details = message.get("details")
@@ -44,11 +51,16 @@ def extract_general_comments(feed_messages: list[dict]) -> list[dict]:
         if author in SKIP_AUTHORS:
             continue
 
+        msg_id = message["id"]
+        unbound = unbound_map.get(msg_id, {})
+        resolved = unbound.get("resolved")
+
         comments.append({
-            "id": message["id"],
+            "id": msg_id,
             "author": author,
             "text": message["text"],
             "time": message.get("time"),
+            "resolved": resolved,
         })
 
     return comments

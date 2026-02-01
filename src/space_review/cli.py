@@ -24,9 +24,10 @@ def fetch_review(
     review = client.get_review_by_number(parsed.project, parsed.number)
 
     feed_messages = client.get_feed_messages(review["feedChannelId"])
+    unbound_discussions = client.get_unbound_discussions(parsed.project, review["id"])
     discussions = extract_code_discussions(feed_messages)
     discussions = filter_discussions(discussions, unresolved_only)
-    general_comments = extract_general_comments(feed_messages)
+    general_comments = extract_general_comments(feed_messages, unbound_discussions)
 
     for discussion in discussions:
         thread_messages = client.get_discussion_thread(discussion["channel_id"])

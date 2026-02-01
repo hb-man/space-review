@@ -35,7 +35,7 @@ class SpaceClient:
     def get_unbound_discussions(self, project: str, review_id: str) -> list[dict]:
         response = self._client.get(
             f"/projects/key:{project}/code-reviews/{review_id}/unbound-discussions",
-            params={"$fields": "data(id,resolved,item(id))"},
+            params={"$fields": "data(id,resolved,archived,item(id))"},
         )
         response.raise_for_status()
         return response.json()["data"]
