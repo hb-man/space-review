@@ -14,10 +14,10 @@ Fetch code review discussions from JetBrains Space.
 
 ```bash
 # Paste a review URL (colored output)
-space-review "https://jetbrains.team/p/ij/reviews/189586/timeline"
+space-review "https://<SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline"
 
 # Or use review ID
-space-review IJ-CR-174369
+space-review PROJECT-CR-123456
 
 # Plain markdown for files
 space-review $ARGUMENTS --plain -o review.md

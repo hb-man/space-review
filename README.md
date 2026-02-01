@@ -35,25 +35,36 @@ uv run space-review IJ-CR-174369
 
 ## Configuration
 
-The tool requires a JetBrains Space API token. Configure it via:
+The tool requires a JetBrains Space API token.
 
-1. `--token` flag (highest priority)
+### Creating a Token
+
+1. Go to `https://<YOUR-SPACE>.jetbrains.space/m/User.Name/authentication?tab=ApplicationPasswords`
+2. Click **New application password**
+3. Select the projects you need access to
+4. Enable these permissions:
+   - **Code Reviews** → Read
+   - **Chats** → View messages
+5. Copy the generated token
+
+### Setting the Token
+
+Configure via (in priority order):
+1. `--token` flag
 2. `SPACE_TOKEN` environment variable
-3. `.env` file in the project root
-
-To get a token: JetBrains Space → Your Profile → Personal Tokens → Create new token.
+3. `.env` file with `SPACE_TOKEN=your_token`
 
 ## Usage
 
 ### Basic Usage
 
 ```bash
-# By review ID
-space-review IJ-CR-174369
-space-review IJ-MR-188658
+# By URL (paste from browser)
+space-review "https://<YOUR-SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline"
 
-# By URL
-space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
+# By review ID
+space-review PROJECT-CR-123456
+space-review PROJECT-MR-123456
 ```
 
 ### Output Options

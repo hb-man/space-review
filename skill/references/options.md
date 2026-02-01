@@ -3,14 +3,14 @@
 ## Input Formats
 
 ```bash
-# Space URL (most common)
-space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
+# Space URL (most common - paste from browser)
+space-review "https://<SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline"
 
 # Code Review ID
-space-review IJ-CR-174369
+space-review PROJECT-CR-123456
 
 # Merge Request ID
-space-review IJ-MR-188658
+space-review PROJECT-MR-123456
 ```
 
 ## Output Options
@@ -27,16 +27,16 @@ space-review IJ-MR-188658
 
 ```bash
 # View review in terminal (colored)
-space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
+space-review "https://<SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline"
 
 # Plain markdown for files
-space-review "https://jetbrains.team/p/ij/reviews/174369/timeline" --plain -o review.md
+space-review "https://<SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline" --plain -o review.md
 
 # Only unresolved discussions
-space-review "https://jetbrains.team/p/ij/reviews/174369/timeline" --unresolved
+space-review "https://<SPACE>.jetbrains.space/p/PROJECT/reviews/123456/timeline" --unresolved
 
 # JSON output for processing
-space-review IJ-CR-174369 --json
+space-review PROJECT-CR-123456 --json
 ```
 
 ## Output Features
