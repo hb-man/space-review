@@ -162,8 +162,20 @@ space-review/
 │   ├── parser.py       # Review ID/URL parsing
 │   └── processor.py    # Data transformation
 ├── tests/
+├── AGENTS.md                # Instructions for AI agents
+├── openapi.json             # Full Space API spec (2.4MB)
+├── openapi.min.json         # Minified spec (1.2MB)
+├── openapi-endpoints.txt    # Endpoint index (46KB)
+├── openapi-schema-names.txt # Schema names (51KB)
 └── pyproject.toml
 ```
+
+## For AI Agents
+
+See [AGENTS.md](AGENTS.md) for agent-specific instructions including:
+- Which files can be fully read vs require searching
+- Space API reference and lookup workflow
+- Testing and development commands
 
 ## Features
 
