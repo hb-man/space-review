@@ -10,17 +10,9 @@ class SpaceClient:
             headers={"Authorization": f"Bearer {token}"},
         )
 
-    def search_review(self, project: str, number: str) -> str:
+    def get_review_by_number(self, project: str, number: str) -> dict:
         response = self._client.get(
-            f"/projects/key:{project}/code-reviews",
-            params={"text": number, "$top": 1},
-        )
-        response.raise_for_status()
-        return response.json()["data"][0]["review"]["id"]
-
-    def get_review(self, project: str, internal_id: str) -> dict:
-        response = self._client.get(
-            f"/projects/key:{project}/code-reviews/{internal_id}",
+            f"/projects/key:{project}/code-reviews/number:{number}",
             params={"$fields": "id,project,number,title,state,feedChannelId,branchPairs"},
         )
         response.raise_for_status()

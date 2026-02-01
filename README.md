@@ -5,148 +5,113 @@ A command-line tool to fetch code reviews from JetBrains Space (jetbrains.team) 
 ## Installation
 
 ```bash
-# Clone the repository
 cd space-review
-
-# Install dependencies with uv
 uv sync --all-extras
 ```
 
 ## Configuration
 
-The tool requires a JetBrains Space API token. You can provide it in three ways (in order of precedence):
+The tool requires a JetBrains Space API token. Configure it via:
 
-### 1. Command-line flag
-```bash
-space-review IJ-CR-174369 --token "eyJ..."
-```
+1. `--token` flag (highest priority)
+2. `SPACE_TOKEN` environment variable
+3. `.env` file in the project root
 
-### 2. Environment variable
-```bash
-export SPACE_TOKEN="eyJ..."
-space-review IJ-CR-174369
-```
-
-### 3. `.env` file
-Create a `.env` file in the project root:
-```
-SPACE_TOKEN=eyJ...
-```
-
-To get a token, go to JetBrains Space → Your Profile → Personal Tokens → Create a new token with appropriate permissions.
+To get a token: JetBrains Space → Your Profile → Personal Tokens → Create new token.
 
 ## Usage
 
 ### Basic Usage
 
-Fetch a code review by ID:
 ```bash
-# Code Review format
-uv run space-review IJ-CR-174369
+# By review ID
+space-review IJ-CR-174369
+space-review IJ-MR-188658
 
-# Merge Request format
-uv run space-review IJ-MR-188658
+# By URL
+space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
 ```
 
-### URL Input
+### Output Options
 
-You can also pass a Space review URL directly:
 ```bash
-uv run space-review "https://jetbrains.team/p/ij/reviews/174369/timeline"
-uv run space-review "https://jetbrains.team/p/ij/reviews/174369/files"
-```
+# Default: Markdown to stdout
+space-review IJ-CR-174369
 
-### Output Formats
+# Export to markdown file
+space-review IJ-CR-174369 -o review.md
+space-review IJ-CR-174369 --output review.md
 
-#### Markdown (default)
-```bash
-uv run space-review IJ-CR-174369
-```
-
-#### JSON
-```bash
-uv run space-review IJ-CR-174369 --json
+# JSON output
+space-review IJ-CR-174369 --json
 ```
 
 ### Filtering
 
-Show only unresolved discussions:
 ```bash
-uv run space-review IJ-CR-174369 --unresolved
+# Only unresolved discussions
+space-review IJ-CR-174369 --unresolved
 ```
 
-### Combining Options
+### Combined Options
 
 ```bash
-# Unresolved discussions in JSON format
-uv run space-review IJ-CR-174369 --unresolved --json
+# Unresolved discussions exported to file
+space-review IJ-CR-174369 --unresolved -o unresolved.md
 
-# URL with unresolved filter
-uv run space-review "https://jetbrains.team/p/ij/reviews/174369/timeline" --unresolved
+# JSON with unresolved only
+space-review IJ-CR-174369 --unresolved --json
 ```
 
-## Output Examples
+## Output Format
 
-### Markdown Output
+The markdown output includes:
+
+- **Review header** with title, ID, and status (🔴 Closed / 🟢 Opened)
+- **General comments** (non-code review comments) with quoted text
+- **Code discussions** grouped by file with:
+  - Status icon (✅ resolved / 💬 unresolved)
+  - Code snippet with syntax highlighting
+  - Initial comment
+  - Collapsible thread replies
+
+### Example Output
 
 ```markdown
-# BAZEL-2284: don't export Kotlin stdlib to avoid red code
+# BAZEL-2843 [bazel]: make unit tests runnable with Bazel
 
-**Review:** IJ-CR-174369 | **State:** Opened
+**Review:** `IJ-CR-189586` | **State:** 🔴 Closed
 
-## Code Discussions
+## 💬 General Comments
 
-### /plugins/bazel/ModuleEntityUpdater.kt:43
+**Andrzej.Gluszak:**
 
-```kotlin
-val libraryDependency = libraries[dependency]
-if (libraryDependency != null) {
-  val exported = !libraryDependency.isLowPriority
-```
+> >     Add hermetic_cc_toolchain for rules_kotlin 2.0.0 compatibility
+>
+> sounds suspicious...
 
-**Andrew.Kozlov:** (Unresolved)
+---
 
-I'd suggest using `exported` word everywhere.
+## 📝 Code Discussions (0 unresolved, 4 resolved)
 
-> **Lev.Leontev:**
-> `exported` is another thing that's set per dependency, not per library
+### ✅ `/plugins/bazel/src/BazelGlobalFunctions.kt:68`
 
-> **Andrew.Kozlov:**
-> Right now this looks like a hack...
-```
+\`\`\`kotlin
+val globalFunctions: Map<String, BazelGlobalFunction>
+  get() = StarlarkGlobalFunctionProvider.extensionPoint.extensionList
+\`\`\`
 
-### JSON Output
+**Andrzej.Gluszak**
 
-```json
-{
-  "review": {
-    "title": "BAZEL-2284: don't export Kotlin stdlib to avoid red code",
-    "project": "IJ",
-    "number": 174369,
-    "state": "Opened"
-  },
-  "discussions": [
-    {
-      "id": "disc-1",
-      "filename": "/plugins/bazel/ModuleEntityUpdater.kt",
-      "line": 43,
-      "resolved": false,
-      "snippet": [
-        "val libraryDependency = libraries[dependency]",
-        "if (libraryDependency != null) {",
-        "  val exported = !libraryDependency.isLowPriority"
-      ],
-      "author": "Andrew.Kozlov",
-      "text": "I'd suggest using `exported` word everywhere.",
-      "thread": [
-        {
-          "author": "Lev.Leontev",
-          "text": "`exported` is another thing..."
-        }
-      ]
-    }
-  ]
-}
+I think it's not the only place where we have such caching
+
+<details>
+<summary>💬 5 replies</summary>
+
+> **pasynkov:**
+> Any reason to hold it on static?
+...
+</details>
 ```
 
 ## CLI Reference
@@ -159,10 +124,11 @@ Usage: space-review [OPTIONS] REVIEW_ID
   REVIEW_ID can be in format: IJ-CR-174369, IJ-MR-188658, or a Space URL.
 
 Options:
-  --json        Output as JSON
-  --unresolved  Show only unresolved discussions
-  --token TEXT  Space API token
-  --help        Show this message and exit.
+  --json              Output as JSON
+  --unresolved        Show only unresolved discussions
+  --token TEXT        Space API token
+  -o, --output PATH   Export to markdown file
+  --help              Show this message and exit.
 ```
 
 ## Development
@@ -170,14 +136,7 @@ Options:
 ### Running Tests
 
 ```bash
-# Run all tests
 uv run pytest -v
-
-# Run specific test file
-uv run pytest tests/test_api.py -v
-
-# Run with coverage
-uv run pytest --cov=space_review
 ```
 
 ### Project Structure
@@ -185,27 +144,21 @@ uv run pytest --cov=space_review
 ```
 space-review/
 ├── src/space_review/
-│   ├── __init__.py
 │   ├── api.py          # Space API client
 │   ├── cli.py          # CLI entry point
 │   ├── formatter.py    # Markdown/JSON formatting
 │   ├── parser.py       # Review ID/URL parsing
 │   └── processor.py    # Data transformation
 ├── tests/
-│   ├── conftest.py     # Shared fixtures
-│   ├── test_api.py
-│   ├── test_cli.py
-│   ├── test_formatter.py
-│   ├── test_parser.py
-│   └── test_processor.py
-├── .env                # Token configuration
 └── pyproject.toml
 ```
 
-## Dependencies
+## Features
 
-- **httpx** - HTTP client for API requests
-- **click** - CLI framework
-- **python-dotenv** - .env file loading
-- **pytest** - Testing framework
-- **pytest-httpx** - httpx mocking for tests
+- Parses review IDs (`IJ-CR-*`, `IJ-MR-*`) and Space URLs
+- Fetches general comments and code discussions
+- Gets actual comment text from thread channels (not just "posted a comment")
+- Filters out bot comments (Patronus)
+- Supports resolved/unresolved filtering
+- Syntax highlighting for code snippets (Kotlin, Python, Java, Starlark, etc.)
+- Collapsible thread replies in markdown output

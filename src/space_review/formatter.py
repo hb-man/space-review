@@ -31,6 +31,8 @@ EXTENSION_TO_LANGUAGE = {
     ".sh": "bash",
     ".bash": "bash",
     ".zsh": "zsh",
+    ".bazel": "starlark",
+    ".bzl": "starlark",
 }
 
 
@@ -39,12 +41,19 @@ def _detect_language(filename: str) -> str:
     return EXTENSION_TO_LANGUAGE.get(ext, "")
 
 
+def _indent_text(text: str, indent: str = "    ") -> str:
+    return "\n".join(indent + line if line else "" for line in text.split("\n"))
+
+
 def _format_discussion(discussion: dict) -> str:
     lines = []
 
     filename = discussion["filename"]
     line_num = discussion["line"]
-    lines.append(f"### {filename}:{line_num}")
+    resolved = discussion.get("resolved", False)
+    status_icon = "✅" if resolved else "💬"
+
+    lines.append(f"### {status_icon} `{filename}:{line_num}`")
     lines.append("")
 
     language = _detect_language(filename)
@@ -57,9 +66,7 @@ def _format_discussion(discussion: dict) -> str:
         lines.append("")
 
     author = discussion["author"]
-    resolved = discussion.get("resolved", False)
-    status = "Resolved" if resolved else "Unresolved"
-    lines.append(f"**{author}:** ({status})")
+    lines.append(f"**{author}**")
     lines.append("")
     lines.append(discussion["text"])
     lines.append("")
@@ -77,15 +84,25 @@ def _format_discussion(discussion: dict) -> str:
         lines.append("")
 
     thread = discussion.get("thread", [])
-    for message in thread:
-        lines.append(f"> **{message['author']}:**")
-        lines.append(f"> {message['text']}")
+    if thread:
+        lines.append("<details>")
+        lines.append(f"<summary>💬 {len(thread)} replies</summary>")
         lines.append("")
+        for message in thread:
+            lines.append(f"> **{message['author']}:**")
+            for msg_line in message['text'].split('\n'):
+                lines.append(f"> {msg_line}")
+            lines.append(">")
+        lines.append("</details>")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
 
     return "\n".join(lines)
 
 
-def format_markdown(review: dict, discussions: list[dict]) -> str:
+def format_markdown(review: dict, discussions: list[dict], general_comments: list[dict] | None = None) -> str:
     lines = []
 
     title = review["title"]
@@ -95,11 +112,26 @@ def format_markdown(review: dict, discussions: list[dict]) -> str:
     project_key = review["project"]["key"]
     number = review["number"]
     state = review["state"]
-    lines.append(f"**Review:** {project_key}-CR-{number} | **State:** {state}")
+    state_icon = "🟢" if state == "Opened" else "🔴" if state == "Closed" else "⚪"
+    lines.append(f"**Review:** `{project_key}-CR-{number}` | **State:** {state_icon} {state}")
     lines.append("")
 
+    if general_comments:
+        lines.append("## 💬 General Comments")
+        lines.append("")
+        for comment in general_comments:
+            lines.append(f"**{comment['author']}:**")
+            lines.append("")
+            for text_line in comment["text"].split('\n'):
+                lines.append(f"> {text_line}")
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
     if discussions:
-        lines.append("## Code Discussions")
+        resolved_count = sum(1 for d in discussions if d.get("resolved"))
+        unresolved_count = len(discussions) - resolved_count
+        lines.append(f"## 📝 Code Discussions ({unresolved_count} unresolved, {resolved_count} resolved)")
         lines.append("")
 
         for discussion in discussions:
@@ -108,7 +140,7 @@ def format_markdown(review: dict, discussions: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def format_json(review: dict, discussions: list[dict]) -> str:
+def format_json(review: dict, discussions: list[dict], general_comments: list[dict] | None = None) -> str:
     output = {
         "review": {
             "title": review["title"],
@@ -116,6 +148,7 @@ def format_json(review: dict, discussions: list[dict]) -> str:
             "number": review["number"],
             "state": review["state"],
         },
+        "general_comments": general_comments or [],
         "discussions": discussions,
     }
     return json.dumps(output, indent=2)
