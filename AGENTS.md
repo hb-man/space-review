@@ -125,6 +125,9 @@ After installation, users can invoke it via `/space-review IJ-CR-174369` in Clau
 ### Skill Features
 
 - Fetch reviews by ID or URL
-- Colored terminal output with diff-style snippets
-- Line numbers with add/delete/selection markers
-- Options: `--plain`, `--json`, `--unresolved`, `-o file.md`
+- Plain markdown output (default) with diff-style snippets
+- Line numbers with add/delete/modify/selection markers
+- Inline diff for modified lines (`[-deleted-][+inserted+]`)
+- Code suggestions marked with 💡
+- Chronological ordering of all feedback
+- Options: `--color`, `--json`, `--unresolved`, `-o file.md`

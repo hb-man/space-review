@@ -32,9 +32,9 @@ class TestExtractCodeDiscussions:
 
         discussion = result[0]
         assert discussion["snippet"] == [
-            {"text": "val libraryDependency = libraries[dependency]", "type": None, "old_line": 41, "new_line": 41},
-            {"text": "if (libraryDependency != null) {", "type": None, "old_line": 42, "new_line": 42},
-            {"text": "  val exported = !libraryDependency.isLowPriority", "type": "ADDED", "old_line": None, "new_line": 43},
+            {"text": "val libraryDependency = libraries[dependency]", "type": None, "old_line": 41, "new_line": 41, "deletes": None, "inserts": None},
+            {"text": "if (libraryDependency != null) {", "type": None, "old_line": 42, "new_line": 42, "deletes": None, "inserts": None},
+            {"text": "  val exported = !libraryDependency.isLowPriority", "type": "ADDED", "old_line": None, "new_line": 43, "deletes": None, "inserts": None},
         ]
 
     def test_extract_skips_non_code_discussion_events(self, sample_feed_message):

@@ -17,7 +17,7 @@ def fetch_review(
     token: str,
     unresolved_only: bool = False,
     output_json: bool = False,
-    output_plain: bool = False,
+    output_color: bool = False,
 ) -> tuple[str, list]:
     parsed = parse_review_id(review_id)
     client = SpaceClient(token=token)
@@ -36,20 +36,20 @@ def fetch_review(
 
     if output_json:
         return format_json(review, discussions, general_comments), discussions
-    elif output_plain:
-        return format_markdown(review, discussions, general_comments), discussions
-    else:
+    elif output_color:
         return format_color(review, discussions, general_comments), discussions
+    else:
+        return format_markdown(review, discussions, general_comments), discussions
 
 
 @click.command()
 @click.argument("review_id")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
-@click.option("--plain", "output_plain", is_flag=True, help="Output as plain markdown (no colors)")
+@click.option("--color", "output_color", is_flag=True, help="Output with colors (default is plain markdown)")
 @click.option("--unresolved", "unresolved_only", is_flag=True, help="Show only unresolved discussions")
 @click.option("--token", envvar="SPACE_TOKEN", help="Space API token")
 @click.option("-o", "--output", "output_file", type=click.Path(), help="Export to markdown file")
-def main(review_id: str, output_json: bool, output_plain: bool, unresolved_only: bool, token: str | None, output_file: str | None):
+def main(review_id: str, output_json: bool, output_color: bool, unresolved_only: bool, token: str | None, output_file: str | None):
     """Fetch code review discussions from JetBrains Space.
 
     REVIEW_ID can be in format: IJ-CR-174369, IJ-MR-188658, or a Space URL.
@@ -67,7 +67,7 @@ def main(review_id: str, output_json: bool, output_plain: bool, unresolved_only:
             token=token,
             unresolved_only=unresolved_only,
             output_json=output_json,
-            output_plain=output_plain,
+            output_color=output_color,
         )
         if output_file:
             with open(output_file, "w") as f:

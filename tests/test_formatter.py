@@ -75,7 +75,7 @@ class TestFormatMarkdownCodeDiscussion:
     def test_format_markdown_code_discussion(self, sample_review, sample_discussion):
         result = format_markdown(sample_review, [sample_discussion])
 
-        assert "## 📝 Code Discussions" in result
+        assert "## Feedback" in result
         # Line 43 (0-indexed) displays as 44 (1-indexed)
         assert "### 💬 `/plugins/bazel/ModuleEntityUpdater.kt:44`" in result
 
@@ -210,7 +210,7 @@ class TestFormatMarkdownGeneralComments:
 
         result = format_markdown(sample_review, [], general_comments)
 
-        assert "## 💬 General Comments" in result
+        assert "## Feedback" in result
         assert "**Reviewer**" in result
         assert "> LGTM!" in result
 
@@ -261,3 +261,60 @@ class TestFormatMarkdownGeneralComments:
         parsed = json.loads(result)
         assert len(parsed["general_comments"]) == 1
         assert parsed["general_comments"][0]["author"] == "Reviewer"
+
+
+class TestFormatInlineDiff:
+    def test_apply_inline_diff_plain(self):
+        from space_review.formatter import _apply_inline_diff_plain
+
+        text = "consoleOutput.contains(consoleOutputconsoleText)"
+        deletes = [{"start": 23, "length": 13}]
+        inserts = [{"start": 36, "length": 11}]
+
+        result = _apply_inline_diff_plain(text, deletes, inserts)
+
+        assert "[-consoleOutput-]" in result
+        assert "[+consoleText+]" in result
+        assert "consoleOutput.contains(" in result
+
+    def test_apply_inline_diff_plain_no_changes(self):
+        from space_review.formatter import _apply_inline_diff_plain
+
+        text = "unchanged line"
+
+        result = _apply_inline_diff_plain(text, None, None)
+
+        assert result == "unchanged line"
+
+    def test_apply_inline_diff_color(self):
+        from space_review.formatter import _apply_inline_diff_color, Colors
+
+        text = "consoleOutput.contains(consoleOutputconsoleText)"
+        deletes = [{"start": 23, "length": 13}]
+        inserts = [{"start": 36, "length": 11}]
+
+        result = _apply_inline_diff_color(text, deletes, inserts)
+
+        assert Colors.RED in result
+        assert Colors.STRIKETHROUGH in result
+        assert Colors.GREEN in result
+        assert "consoleOutput" in result
+        assert "consoleText" in result
+
+    def test_format_snippet_line_modified(self):
+        from space_review.formatter import _format_snippet_line
+
+        line = {
+            "text": "foo(oldValuenewValue)",
+            "type": "MODIFIED",
+            "old_line": 10,
+            "new_line": 10,
+            "deletes": [{"start": 4, "length": 8}],
+            "inserts": [{"start": 12, "length": 8}],
+        }
+
+        result = _format_snippet_line(line, False)
+
+        assert "*" in result
+        assert "[-oldValue-]" in result
+        assert "[+newValue+]" in result

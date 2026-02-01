@@ -1,6 +1,6 @@
 def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
     discussions = []
-    for message in feed_messages:
+    for feed_index, message in enumerate(feed_messages):
         details = message.get("details")
         if not details:
             continue
@@ -17,12 +17,18 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
                 "type": line.get("type"),
                 "old_line": line.get("oldLineNum"),
                 "new_line": line.get("newLineNum"),
+                "deletes": line.get("deletes"),
+                "inserts": line.get("inserts"),
             }
             for line in snippet_data.get("lines", [])
         ]
 
+        suggested_edit = code_discussion.get("suggestedEdit")
+        is_suggestion = bool(suggested_edit and "suggestionCommitId" in suggested_edit)
+
         discussions.append({
             "id": code_discussion["id"],
+            "feed_index": feed_index,
             "filename": anchor["filename"],
             "line": anchor["line"],
             "old_line": anchor.get("oldLine"),
@@ -33,7 +39,8 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
             "channel_id": code_discussion["channel"]["id"],
             "author": message["author"]["name"],
             "text": None,
-            "suggested_edit": code_discussion.get("suggestedEdit"),
+            "suggested_edit": suggested_edit,
+            "is_suggestion": is_suggestion,
             "thread": [],
         })
 
@@ -52,7 +59,7 @@ def extract_general_comments(feed_messages: list[dict], unbound_discussions: lis
                 unbound_map[item_id] = ud
 
     comments = []
-    for message in feed_messages:
+    for feed_index, message in enumerate(feed_messages):
         details = message.get("details")
         if not details:
             continue
@@ -69,6 +76,7 @@ def extract_general_comments(feed_messages: list[dict], unbound_discussions: lis
 
         comments.append({
             "id": msg_id,
+            "feed_index": feed_index,
             "author": author,
             "text": message["text"],
             "time": message.get("time"),

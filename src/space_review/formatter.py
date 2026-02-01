@@ -41,6 +41,34 @@ def _detect_language(filename: str) -> str:
     return EXTENSION_TO_LANGUAGE.get(ext, "")
 
 
+def _apply_inline_diff_plain(text: str, deletes: list[dict] | None, inserts: list[dict] | None) -> str:
+    if not deletes and not inserts:
+        return text
+
+    ranges = []
+    for d in (deletes or []):
+        ranges.append((d["start"], d["start"] + d["length"], "delete"))
+    for i in (inserts or []):
+        ranges.append((i["start"], i["start"] + i["length"], "insert"))
+    ranges.sort(key=lambda r: r[0])
+
+    result = []
+    pos = 0
+    for start, end, kind in ranges:
+        if pos < start:
+            result.append(text[pos:start])
+        chunk = text[start:end]
+        if kind == "delete":
+            result.append(f"[-{chunk}-]")
+        else:
+            result.append(f"[+{chunk}+]")
+        pos = end
+    if pos < len(text):
+        result.append(text[pos:])
+
+    return "".join(result)
+
+
 def _find_selected_indices(
     snippet: list[dict],
     anchor_line: int | None,
@@ -73,6 +101,8 @@ def _format_snippet_line(line: dict, is_selected: bool) -> str:
     new_num = line.get("new_line")
     line_type = line.get("type")
     text = line.get("text", "")
+    deletes = line.get("deletes")
+    inserts = line.get("inserts")
 
     old_str = str(old_num + 1) if old_num is not None else ""
     new_str = str(new_num + 1) if new_num is not None else ""
@@ -81,6 +111,9 @@ def _format_snippet_line(line: dict, is_selected: bool) -> str:
         marker = "+"
     elif line_type == "DELETED":
         marker = "-"
+    elif line_type == "MODIFIED":
+        marker = "*"
+        text = _apply_inline_diff_plain(text, deletes, inserts)
     else:
         marker = " "
 
@@ -89,14 +122,14 @@ def _format_snippet_line(line: dict, is_selected: bool) -> str:
     return f"{select_marker} {old_str:>4} {new_str:>4} {marker} {text}"
 
 
-def _format_discussion(discussion: dict) -> str:
+def _format_discussion(discussion: dict, is_suggestion: bool = False) -> str:
     lines = []
 
     filename = discussion["filename"]
     line_num = discussion["line"]
     display_line = line_num + 1 if line_num is not None else 0
     resolved = discussion.get("resolved", False)
-    status_icon = "✅" if resolved else "💬"
+    status_icon = "✅" if resolved else "💡" if is_suggestion else "💬"
 
     lines.append(f"### {status_icon} `{filename}:{display_line}`")
     lines.append("")
@@ -132,15 +165,20 @@ def _format_discussion(discussion: dict) -> str:
 
     suggested_edit = discussion.get("suggested_edit")
     if suggested_edit:
-        lines.append("**Suggested Edit:**")
-        lines.append("")
-        diff = format_suggested_edit_diff(
-            suggested_edit["original"], suggested_edit["suggested"]
-        )
-        lines.append("```diff")
-        lines.append(diff)
-        lines.append("```")
-        lines.append("")
+        if "original" in suggested_edit and "suggested" in suggested_edit:
+            lines.append("**Suggested Edit:**")
+            lines.append("")
+            diff = format_suggested_edit_diff(
+                suggested_edit["original"], suggested_edit["suggested"]
+            )
+            lines.append("```diff")
+            lines.append(diff)
+            lines.append("```")
+            lines.append("")
+        elif "suggestionCommitId" in suggested_edit:
+            status = suggested_edit.get("status") or "pending"
+            lines.append(f"**Code Suggestion** ({status})")
+            lines.append("")
 
     thread = discussion.get("thread", [])
     if thread:
@@ -165,7 +203,7 @@ def format_markdown(review: dict, discussions: list[dict], general_comments: lis
     lines = []
 
     lines.append("```")
-    lines.append("Legend: + added | - deleted | > selected lines")
+    lines.append("Legend: + added | - deleted | * modified | > selected lines")
     lines.append("```")
     lines.append("")
 
@@ -180,30 +218,49 @@ def format_markdown(review: dict, discussions: list[dict], general_comments: lis
     lines.append(f"**Review:** `{project_key}-CR-{number}` | **State:** {state_icon} {state}")
     lines.append("")
 
-    if general_comments:
-        resolved_gc = sum(1 for c in general_comments if c.get("resolved"))
-        unresolved_gc = len(general_comments) - resolved_gc
-        lines.append(f"## 💬 General Comments ({unresolved_gc} unresolved, {resolved_gc} resolved)")
-        lines.append("")
-        for comment in general_comments:
-            resolved = comment.get("resolved")
-            status_icon = "✅" if resolved else "💬" if resolved is False else "💭"
-            lines.append(f"### {status_icon} **{comment['author']}**")
-            lines.append("")
-            for text_line in comment["text"].split('\n'):
-                lines.append(f"> {text_line}")
-            lines.append("")
-            lines.append("---")
-            lines.append("")
+    all_items = []
+    for comment in (general_comments or []):
+        all_items.append({"type": "comment", "data": comment, "feed_index": comment.get("feed_index", 0)})
+    for discussion in discussions:
+        item_type = "suggestion" if discussion.get("is_suggestion") else "discussion"
+        all_items.append({"type": item_type, "data": discussion, "feed_index": discussion.get("feed_index", 0)})
 
-    if discussions:
-        resolved_count = sum(1 for d in discussions if d.get("resolved"))
-        unresolved_count = len(discussions) - resolved_count
-        lines.append(f"## 📝 Code Discussions ({unresolved_count} unresolved, {resolved_count} resolved)")
+    all_items.sort(key=lambda x: x["feed_index"])
+
+    if all_items:
+        suggestion_count = sum(1 for i in all_items if i["type"] == "suggestion")
+        discussion_count = sum(1 for i in all_items if i["type"] == "discussion")
+        comment_count = sum(1 for i in all_items if i["type"] == "comment")
+        total_resolved = sum(1 for i in all_items if i["data"].get("resolved"))
+        total_unresolved = len(all_items) - total_resolved
+
+        parts = []
+        if comment_count:
+            parts.append(f"{comment_count} comments")
+        if suggestion_count:
+            parts.append(f"{suggestion_count} suggestions")
+        if discussion_count:
+            parts.append(f"{discussion_count} discussions")
+
+        lines.append(f"## Feedback ({total_unresolved} unresolved, {total_resolved} resolved)")
+        lines.append(f"*{', '.join(parts)}*")
         lines.append("")
 
-        for discussion in discussions:
-            lines.append(_format_discussion(discussion))
+        for item in all_items:
+            if item["type"] == "comment":
+                comment = item["data"]
+                resolved = comment.get("resolved")
+                status_icon = "✅" if resolved else "💬" if resolved is False else "💭"
+                lines.append(f"### {status_icon} **{comment['author']}**")
+                lines.append("")
+                for text_line in comment["text"].split('\n'):
+                    lines.append(f"> {text_line}")
+                lines.append("")
+                lines.append("---")
+                lines.append("")
+            else:
+                is_suggestion = item["type"] == "suggestion"
+                lines.append(_format_discussion(item["data"], is_suggestion=is_suggestion))
 
     return "\n".join(lines)
 
@@ -257,6 +314,35 @@ class Colors:
     MAGENTA = "\033[35m"
     CYAN = "\033[36m"
     WHITE = "\033[37m"
+    STRIKETHROUGH = "\033[9m"
+
+
+def _apply_inline_diff_color(text: str, deletes: list[dict] | None, inserts: list[dict] | None) -> str:
+    if not deletes and not inserts:
+        return text
+
+    ranges = []
+    for d in (deletes or []):
+        ranges.append((d["start"], d["start"] + d["length"], "delete"))
+    for i in (inserts or []):
+        ranges.append((i["start"], i["start"] + i["length"], "insert"))
+    ranges.sort(key=lambda r: r[0])
+
+    result = []
+    pos = 0
+    for start, end, kind in ranges:
+        if pos < start:
+            result.append(text[pos:start])
+        chunk = text[start:end]
+        if kind == "delete":
+            result.append(f"{Colors.RED}{Colors.STRIKETHROUGH}{chunk}{Colors.RESET}")
+        else:
+            result.append(f"{Colors.GREEN}{chunk}{Colors.RESET}")
+        pos = end
+    if pos < len(text):
+        result.append(text[pos:])
+
+    return "".join(result)
 
 
 def _color_snippet_line(line: dict, is_selected: bool) -> str:
@@ -264,6 +350,8 @@ def _color_snippet_line(line: dict, is_selected: bool) -> str:
     new_num = line.get("new_line")
     line_type = line.get("type")
     text = line.get("text", "")
+    deletes = line.get("deletes")
+    inserts = line.get("inserts")
 
     old_str = str(old_num + 1) if old_num is not None else ""
     new_str = str(new_num + 1) if new_num is not None else ""
@@ -274,6 +362,10 @@ def _color_snippet_line(line: dict, is_selected: bool) -> str:
     elif line_type == "DELETED":
         marker = "-"
         line_color = Colors.RED
+    elif line_type == "MODIFIED":
+        marker = "*"
+        line_color = ""
+        text = _apply_inline_diff_color(text, deletes, inserts)
     else:
         marker = " "
         line_color = ""
@@ -291,14 +383,19 @@ def _color_snippet_line(line: dict, is_selected: bool) -> str:
     return f"{select_marker} {content}"
 
 
-def _format_discussion_color(discussion: dict) -> str:
+def _format_discussion_color(discussion: dict, is_suggestion: bool = False) -> str:
     lines = []
 
     filename = discussion["filename"]
     line_num = discussion["line"]
     display_line = line_num + 1 if line_num is not None else 0
     resolved = discussion.get("resolved", False)
-    status = f"{Colors.GREEN}✓ Resolved{Colors.RESET}" if resolved else f"{Colors.YELLOW}○ Open{Colors.RESET}"
+    if resolved:
+        status = f"{Colors.GREEN}✓ Resolved{Colors.RESET}"
+    elif is_suggestion:
+        status = f"{Colors.MAGENTA}💡 Suggestion{Colors.RESET}"
+    else:
+        status = f"{Colors.YELLOW}○ Open{Colors.RESET}"
 
     lines.append(f"{Colors.BOLD}{Colors.BLUE}{filename}:{display_line}{Colors.RESET}  {status}")
     lines.append("")
@@ -330,18 +427,23 @@ def _format_discussion_color(discussion: dict) -> str:
 
     suggested_edit = discussion.get("suggested_edit")
     if suggested_edit:
-        lines.append(f"{Colors.MAGENTA}Suggested Edit:{Colors.RESET}")
-        diff = format_suggested_edit_diff(
-            suggested_edit["original"], suggested_edit["suggested"]
-        )
-        for diff_line in diff.split('\n'):
-            if diff_line.startswith('+'):
-                lines.append(f"  {Colors.GREEN}{diff_line}{Colors.RESET}")
-            elif diff_line.startswith('-'):
-                lines.append(f"  {Colors.RED}{diff_line}{Colors.RESET}")
-            else:
-                lines.append(f"  {diff_line}")
-        lines.append("")
+        if "original" in suggested_edit and "suggested" in suggested_edit:
+            lines.append(f"{Colors.MAGENTA}Suggested Edit:{Colors.RESET}")
+            diff = format_suggested_edit_diff(
+                suggested_edit["original"], suggested_edit["suggested"]
+            )
+            for diff_line in diff.split('\n'):
+                if diff_line.startswith('+'):
+                    lines.append(f"  {Colors.GREEN}{diff_line}{Colors.RESET}")
+                elif diff_line.startswith('-'):
+                    lines.append(f"  {Colors.RED}{diff_line}{Colors.RESET}")
+                else:
+                    lines.append(f"  {diff_line}")
+            lines.append("")
+        elif "suggestionCommitId" in suggested_edit:
+            status = suggested_edit.get("status") or "pending"
+            lines.append(f"{Colors.MAGENTA}Code Suggestion{Colors.RESET} ({status})")
+            lines.append("")
 
     thread = discussion.get("thread", [])
     if thread:
@@ -361,7 +463,7 @@ def _format_discussion_color(discussion: dict) -> str:
 def format_color(review: dict, discussions: list[dict], general_comments: list[dict] | None = None) -> str:
     lines = []
 
-    lines.append(f"{Colors.DIM}Legend:{Colors.RESET} {Colors.GREEN}+ added{Colors.RESET} | {Colors.RED}- deleted{Colors.RESET} | {Colors.YELLOW}{Colors.BOLD}>{Colors.RESET} selected")
+    lines.append(f"{Colors.DIM}Legend:{Colors.RESET} {Colors.GREEN}+ added{Colors.RESET} | {Colors.RED}- deleted{Colors.RESET} | * modified | {Colors.YELLOW}{Colors.BOLD}>{Colors.RESET} selected")
     lines.append("")
 
     title = review["title"]
@@ -375,30 +477,39 @@ def format_color(review: dict, discussions: list[dict], general_comments: list[d
     lines.append(f"{Colors.DIM}Review:{Colors.RESET} {project_key}-CR-{number}  {Colors.DIM}State:{Colors.RESET} {state_color}{state}{Colors.RESET}")
     lines.append("")
 
-    if general_comments:
-        resolved_gc = sum(1 for c in general_comments if c.get("resolved"))
-        unresolved_gc = len(general_comments) - resolved_gc
-        lines.append(f"{Colors.BOLD}General Comments{Colors.RESET} ({Colors.YELLOW}{unresolved_gc} open{Colors.RESET}, {Colors.GREEN}{resolved_gc} resolved{Colors.RESET})")
-        lines.append(f"{Colors.DIM}{'═' * 60}{Colors.RESET}")
-        lines.append("")
-        for comment in general_comments:
-            resolved = comment.get("resolved")
-            status = f"{Colors.GREEN}✓{Colors.RESET}" if resolved else f"{Colors.YELLOW}○{Colors.RESET}" if resolved is False else f"{Colors.DIM}?{Colors.RESET}"
-            lines.append(f"{status} {Colors.CYAN}{Colors.BOLD}{comment['author']}:{Colors.RESET}")
-            for text_line in comment["text"].split('\n'):
-                lines.append(f"    {text_line}")
-            lines.append("")
-            lines.append(f"{Colors.DIM}{'─' * 60}{Colors.RESET}")
-            lines.append("")
+    all_items = []
+    for comment in (general_comments or []):
+        all_items.append({"type": "comment", "data": comment, "feed_index": comment.get("feed_index", 0)})
+    for discussion in discussions:
+        item_type = "suggestion" if discussion.get("is_suggestion") else "discussion"
+        all_items.append({"type": item_type, "data": discussion, "feed_index": discussion.get("feed_index", 0)})
 
-    if discussions:
-        resolved_count = sum(1 for d in discussions if d.get("resolved"))
-        unresolved_count = len(discussions) - resolved_count
-        lines.append(f"{Colors.BOLD}Code Discussions{Colors.RESET} ({Colors.YELLOW}{unresolved_count} open{Colors.RESET}, {Colors.GREEN}{resolved_count} resolved{Colors.RESET})")
+    all_items.sort(key=lambda x: x["feed_index"])
+
+    if all_items:
+        suggestion_count = sum(1 for i in all_items if i["type"] == "suggestion")
+        discussion_count = sum(1 for i in all_items if i["type"] == "discussion")
+        comment_count = sum(1 for i in all_items if i["type"] == "comment")
+        total_resolved = sum(1 for i in all_items if i["data"].get("resolved"))
+        total_unresolved = len(all_items) - total_resolved
+
+        lines.append(f"{Colors.BOLD}Feedback{Colors.RESET} ({Colors.YELLOW}{total_unresolved} open{Colors.RESET}, {Colors.GREEN}{total_resolved} resolved{Colors.RESET})")
         lines.append(f"{Colors.DIM}{'═' * 60}{Colors.RESET}")
         lines.append("")
 
-        for discussion in discussions:
-            lines.append(_format_discussion_color(discussion))
+        for item in all_items:
+            if item["type"] == "comment":
+                comment = item["data"]
+                resolved = comment.get("resolved")
+                status = f"{Colors.GREEN}✓{Colors.RESET}" if resolved else f"{Colors.YELLOW}○{Colors.RESET}" if resolved is False else f"{Colors.DIM}?{Colors.RESET}"
+                lines.append(f"{status} {Colors.CYAN}{Colors.BOLD}{comment['author']}:{Colors.RESET}")
+                for text_line in comment["text"].split('\n'):
+                    lines.append(f"    {text_line}")
+                lines.append("")
+                lines.append(f"{Colors.DIM}{'─' * 60}{Colors.RESET}")
+                lines.append("")
+            else:
+                is_suggestion = item["type"] == "suggestion"
+                lines.append(_format_discussion_color(item["data"], is_suggestion=is_suggestion))
 
     return "\n".join(lines)

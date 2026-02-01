@@ -70,14 +70,14 @@ space-review PROJECT-MR-123456
 ### Output Options
 
 ```bash
-# Default: Colored terminal output
+# Default: Plain markdown
 space-review IJ-CR-174369
 
-# Plain markdown (no colors, for piping/files)
-space-review IJ-CR-174369 --plain
+# Colored terminal output
+space-review IJ-CR-174369 --color
 
 # Export to markdown file
-space-review IJ-CR-174369 --plain -o review.md
+space-review IJ-CR-174369 -o review.md
 
 # JSON output
 space-review IJ-CR-174369 --json
@@ -93,8 +93,11 @@ space-review IJ-CR-174369 --unresolved
 ### Combined Options
 
 ```bash
-# Unresolved discussions exported to file
-space-review IJ-CR-174369 --unresolved -o unresolved.md
+# Unresolved only
+space-review IJ-CR-174369 --unresolved
+
+# Colored output with unresolved only
+space-review IJ-CR-174369 --unresolved --color
 
 # JSON with unresolved only
 space-review IJ-CR-174369 --unresolved --json
@@ -105,7 +108,7 @@ space-review IJ-CR-174369 --unresolved --json
 Code snippets show diff-style formatting with line numbers and selection markers:
 
 ```
-Legend: + added | - deleted | > selected
+Legend: + added | - deleted | * modified | > selected
 
    182  182       }
 >       184 +     // Ensure HOME is set (Bazelisk requires it)
@@ -119,6 +122,7 @@ Legend: + added | - deleted | > selected
 - **Two columns**: old line number, new line number
 - **`+`**: Added line (green in color mode)
 - **`-`**: Deleted line (red in color mode)
+- **`*`**: Modified line with inline changes (shows `[-deleted-]` and `[+inserted+]` markers)
 - **`>`**: Selected lines being discussed (yellow marker)
 
 ## CLI Reference
@@ -132,7 +136,7 @@ Usage: space-review [OPTIONS] REVIEW_ID
 
 Options:
   --json              Output as JSON
-  --plain             Output as plain markdown (no colors)
+  --color             Output with colors (default is plain markdown)
   --unresolved        Show only unresolved discussions
   --token TEXT        Space API token
   -o, --output PATH   Export to markdown file
@@ -173,8 +177,10 @@ See [AGENTS.md](AGENTS.md).
 ## Features
 
 - Accepts review IDs (`IJ-CR-*`, `IJ-MR-*`) or Space URLs
-- Fetches general comments and code discussions with full thread content
-- Diff-style code snippets with line numbers, add/delete markers, and selection highlighting
-- Colored terminal output (default) or plain markdown
+- Fetches all feedback (comments, code discussions, suggestions) in chronological order
+- Diff-style code snippets with line numbers, add/delete/modify markers, and selection highlighting
+- Inline diff support for modified lines (shows `[-deleted-]` and `[+inserted+]`)
+- Code suggestions marked with 💡 and shown in context
+- Plain markdown (default) or colored terminal output
 - Filters bot comments (Patronus) and supports `--unresolved` filtering
 - JSON output for programmatic use
