@@ -41,10 +41,6 @@ def _detect_language(filename: str) -> str:
     return EXTENSION_TO_LANGUAGE.get(ext, "")
 
 
-def _indent_text(text: str, indent: str = "    ") -> str:
-    return "\n".join(indent + line if line else "" for line in text.split("\n"))
-
-
 def _format_discussion(discussion: dict) -> str:
     lines = []
 

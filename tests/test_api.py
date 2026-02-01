@@ -8,54 +8,38 @@ from space_review.api import SpaceClient
 BASE_URL = "https://jetbrains.team/api/http"
 
 
-class TestSearchReview:
-    def test_search_review_returns_internal_id(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_response(
-            url=f"{BASE_URL}/projects/key:IJ/code-reviews?text=174369&$top=1",
-            json={"data": [{"review": {"id": "2wBoBc4URsmM"}}]},
-        )
-
-        client = SpaceClient(token="test-token")
-        result = client.search_review(project="IJ", number="174369")
-
-        assert result == "2wBoBc4URsmM"
-
-    def test_search_review_sends_auth_header(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_response(
-            url=f"{BASE_URL}/projects/key:IJ/code-reviews?text=174369&$top=1",
-            json={"data": [{"review": {"id": "abc123"}}]},
-        )
-
-        client = SpaceClient(token="my-secret-token")
-        client.search_review(project="IJ", number="174369")
-
-        request = httpx_mock.get_request()
-        assert request.headers["Authorization"] == "Bearer my-secret-token"
-
-
-class TestGetReview:
-    def test_get_review_returns_review_dict(
+class TestGetReviewByNumber:
+    def test_get_review_by_number_returns_review_dict(
         self, httpx_mock: HTTPXMock, sample_review_data
     ):
         httpx_mock.add_response(json=sample_review_data)
 
         client = SpaceClient(token="test-token")
-        result = client.get_review(project="IJ", internal_id="2wBoBc4URsmM")
+        result = client.get_review_by_number(project="IJ", number="174369")
 
         assert result["id"] == "2wBoBc4URsmM"
         assert result["title"] == "BAZEL-2284: don't export Kotlin stdlib to avoid red code"
         assert result["state"] == "Opened"
 
-    def test_get_review_uses_correct_fields_parameter(self, httpx_mock: HTTPXMock):
+    def test_get_review_by_number_uses_correct_fields_parameter(self, httpx_mock: HTTPXMock):
         httpx_mock.add_response(json={"id": "test"})
 
         client = SpaceClient(token="test-token")
-        client.get_review(project="IJ", internal_id="2wBoBc4URsmM")
+        client.get_review_by_number(project="IJ", number="174369")
 
         request = httpx_mock.get_request()
         url = unquote(str(request.url))
         assert "$fields=id,project,number,title,state,feedChannelId,branchPairs" in url
-        assert "/projects/key:IJ/code-reviews/2wBoBc4URsmM" in url
+        assert "/projects/key:IJ/code-reviews/number:174369" in url
+
+    def test_get_review_by_number_sends_auth_header(self, httpx_mock: HTTPXMock):
+        httpx_mock.add_response(json={"id": "test"})
+
+        client = SpaceClient(token="my-secret-token")
+        client.get_review_by_number(project="IJ", number="174369")
+
+        request = httpx_mock.get_request()
+        assert request.headers["Authorization"] == "Bearer my-secret-token"
 
 
 class TestGetFeedMessages:
@@ -141,4 +125,4 @@ class TestGetUnboundDiscussions:
         request = httpx_mock.get_request()
         url = unquote(str(request.url))
         assert "/projects/key:IJ/code-reviews/2wBoBc4URsmM/unbound-discussions" in url
-        assert "$fields=data(id,resolved,item(id))" in url
+        assert "$fields=data(id,resolved,archived,item(id))" in url

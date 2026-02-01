@@ -20,7 +20,7 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
             "snippet": snippet_lines,
             "channel_id": code_discussion["channel"]["id"],
             "author": message["author"]["name"],
-            "text": None,  # Will be filled from thread's first message
+            "text": None,
             "suggested_edit": code_discussion.get("suggestedEdit"),
             "thread": [],
         })
@@ -76,12 +76,10 @@ def build_discussion_with_thread(discussion: dict, thread_messages: list[dict]) 
     if not thread_messages:
         return discussion
 
-    # First message is the initial comment
     first_msg = thread_messages[0]
     initial_text = first_msg["text"]
     initial_author = first_msg["author"]["name"]
 
-    # Rest are replies
     replies = []
     for msg in thread_messages[1:]:
         replies.append({

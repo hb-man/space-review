@@ -20,7 +20,7 @@ class TestExtractCodeDiscussions:
         assert discussion["resolved"] is False
         assert discussion["channel_id"] == "disc-channel-1"
         assert discussion["author"] == "Andrew.Kozlov"
-        assert discussion["text"] == "I'd suggest using `exported` word everywhere."
+        assert discussion["text"] is None
         assert discussion["suggested_edit"] is None
         assert discussion["thread"] == []
 

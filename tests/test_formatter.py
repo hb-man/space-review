@@ -62,33 +62,34 @@ class TestFormatMarkdownReviewHeader:
         result = format_markdown(sample_review, [])
 
         assert "# BAZEL-2284: don't export Kotlin stdlib to avoid red code" in result
-        assert "**Review:** IJ-CR-174369" in result
-        assert "**State:** Opened" in result
+        assert "`IJ-CR-174369`" in result
+        assert "🟢 Opened" in result
 
     def test_format_markdown_meta_line_format(self, sample_review):
         result = format_markdown(sample_review, [])
 
-        assert "**Review:** IJ-CR-174369 | **State:** Opened" in result
+        assert "**Review:** `IJ-CR-174369` | **State:** 🟢 Opened" in result
 
 
 class TestFormatMarkdownCodeDiscussion:
     def test_format_markdown_code_discussion(self, sample_review, sample_discussion):
         result = format_markdown(sample_review, [sample_discussion])
 
-        assert "## Code Discussions" in result
-        assert "### /plugins/bazel/ModuleEntityUpdater.kt:43" in result
+        assert "## 📝 Code Discussions" in result
+        assert "### 💬 `/plugins/bazel/ModuleEntityUpdater.kt:43`" in result
 
     def test_format_markdown_discussion_metadata(self, sample_review, sample_discussion):
         result = format_markdown(sample_review, [sample_discussion])
 
         assert "Andrew.Kozlov" in result
-        assert "Unresolved" in result
+        assert "1 unresolved" in result
 
     def test_format_markdown_resolved_discussion(self, sample_review, sample_discussion):
         sample_discussion["resolved"] = True
         result = format_markdown(sample_review, [sample_discussion])
 
-        assert "Resolved" in result
+        assert "✅" in result
+        assert "1 resolved" in result
 
 
 class TestFormatMarkdownSnippet:
@@ -138,7 +139,7 @@ class TestFormatMarkdownThread:
     def test_format_markdown_initial_comment(self, sample_review, sample_discussion):
         result = format_markdown(sample_review, [sample_discussion])
 
-        assert "**Andrew.Kozlov:**" in result
+        assert "**Andrew.Kozlov**" in result
         assert "I'd suggest using `exported` word everywhere." in result
 
 
