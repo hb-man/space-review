@@ -13,11 +13,13 @@ Fetch code review discussions from JetBrains Space.
 ## Quick Start
 
 ```bash
-# Fetch review by ID or URL (colored output)
-space-review IJ-CR-174369
+# Paste a review URL (colored output)
 space-review "https://jetbrains.team/p/ij/reviews/189586/timeline"
 
-# Plain markdown for piping/files
+# Or use review ID
+space-review IJ-CR-174369
+
+# Plain markdown for files
 space-review $ARGUMENTS --plain -o review.md
 ```
 
