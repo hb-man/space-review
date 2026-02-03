@@ -10,7 +10,7 @@ def extract_code_discussions(feed_messages: list[dict]) -> list[dict]:
         code_discussion = details["codeDiscussion"]
         anchor = code_discussion["anchor"]
         end_anchor = code_discussion.get("endAnchor")
-        snippet_data = code_discussion.get("snippet", {})
+        snippet_data = code_discussion.get("snippet") or {}
         snippet_lines = [
             {
                 "text": line["text"],
